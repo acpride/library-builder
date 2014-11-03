@@ -91,10 +91,14 @@ public class EbookLibraryDAO implements LibraryConstants {
 		preparedStatement = connect.prepareStatement(sql,
 				Statement.RETURN_GENERATED_KEYS);
 		preparedStatement.setInt(1, post.getPost_author());
+		
+		//randomize publish date
+		long pubDate = WordpressUtils.getRandomTimeBetweenTwoDates();
+		
 		preparedStatement.setTimestamp(2,
-				new Timestamp(System.currentTimeMillis()));
+				new Timestamp(pubDate));
 		preparedStatement.setTimestamp(3,
-				new Timestamp(System.currentTimeMillis()));
+				new Timestamp(pubDate));
 		preparedStatement.setString(4, post.getPost_content());
 		preparedStatement.setString(5, post.getPost_title());
 		preparedStatement.setString(6, post.getPost_excerpt());
@@ -106,9 +110,9 @@ public class EbookLibraryDAO implements LibraryConstants {
 		preparedStatement.setString(12, post.getTo_ping());
 		preparedStatement.setString(13, post.getPinged());
 		preparedStatement.setTimestamp(14,
-				new Timestamp(System.currentTimeMillis()));
+				new Timestamp(pubDate));
 		preparedStatement.setTimestamp(15,
-				new Timestamp(System.currentTimeMillis()));
+				new Timestamp(pubDate));
 		preparedStatement.setString(16, post.getPost_content_filtered());
 		preparedStatement.setInt(17, post.getPost_parent());
 		preparedStatement.setString(18, post.getGuid());
@@ -179,17 +183,38 @@ public class EbookLibraryDAO implements LibraryConstants {
 		
 	}
 		
-	public int get_post_attachment(String title) throws SQLException{
+	public int get_post_attachment_id(String title, String type) throws SQLException{
 		int ret = -1;
 		String sql = "SELECT ID FROM wp_posts WHERE POST_TYPE=? AND POST_TITLE=?";
 		preparedStatement = connect.prepareStatement(sql);
-		preparedStatement.setString(1, POST_TYPE_ATTACHMENT);
+		//preparedStatement.setString(1, POST_TYPE_ATTACHMENT);
+		preparedStatement.setString(1, type);
 		preparedStatement.setString(2, WordpressUtils.getSlug(title));
 		
 		ResultSet rs = preparedStatement.executeQuery();
 		if(rs.next()){
 			int imgId = rs.getInt("ID");
 			ret = imgId;
+		}
+		
+		rs.close();
+		preparedStatement.close();
+		
+		return ret;
+	}
+	
+	public String get_post_attachment_url(String title, String type) throws SQLException{
+		String ret = "";
+		String sql = "SELECT GUID FROM wp_posts WHERE POST_TYPE=? AND POST_TITLE=?";
+		preparedStatement = connect.prepareStatement(sql);
+		//preparedStatement.setString(1, POST_TYPE_ATTACHMENT);
+		preparedStatement.setString(1, type);
+		preparedStatement.setString(2, WordpressUtils.getSlug(title));
+		
+		ResultSet rs = preparedStatement.executeQuery();
+		if(rs.next()){
+			String guid = rs.getString("GUID");
+			ret = guid;
 		}
 		
 		rs.close();
