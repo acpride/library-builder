@@ -12,6 +12,7 @@ public interface LibraryConstants {
 	public static final String POST_STATUS_PUBLISHED = "publish";
 	public static final String POST_STATUS_INHERIT = "inherit";
 	public static final String POST_STATUS_OPEN = "open";
+	public static final String POST_STATUS_CLOSED = "closed";
 	public static final String POST_TYPE_BOOK_REVIEW = "book-review";
 	public static final String POST_TYPE_ATTACHMENT = "attachment";
 	public static final String POST_TYPE_SDM_DOWNLOADS = "sdm_downloads";
@@ -33,4 +34,5 @@ public interface LibraryConstants {
 	public static final String FILE_EPUB_SUFFIX = "_epub";
 	public static final String FILE_MOBI_SUFFIX = "_mobi";
 	public static final String FILE_PDF_SUFFIX = "_pdf";
+	public static final String FILE_DOWNLOADABLE_SUFFIX = "_file";
 }
