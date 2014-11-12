@@ -183,6 +183,24 @@ public class EbookLibraryDAO implements LibraryConstants {
 		
 	}
 		
+	public int get_term_id(String name) throws SQLException{
+		int ret = -1;
+		String sql = "SELECT term_id FROM wp_terms WHERE slug=?";
+		preparedStatement = connect.prepareStatement(sql);
+		preparedStatement.setString(1, name);
+				
+		ResultSet rs = preparedStatement.executeQuery();
+		if(rs.next()){
+			int starId = rs.getInt("term_id");
+			ret = starId;
+		}
+		
+		rs.close();
+		preparedStatement.close();
+		
+		return ret;
+	}
+	
 	public int get_post_attachment_id(String title, String type) throws SQLException{
 		int ret = -1;
 		String sql = "SELECT ID FROM wp_posts WHERE POST_TYPE=? AND POST_TITLE=?";

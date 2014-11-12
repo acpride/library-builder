@@ -8,7 +8,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.sql.SQLException;
@@ -16,7 +15,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Random;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -51,16 +49,16 @@ import com.ride.librarybuilder.database.WpPostsMetaBean;
 import com.ride.librarybuilder.database.WpTermBean;
 import com.ride.librarybuilder.database.WpTermRelationships;
 import com.ride.librarybuilder.database.WpTermTaxonomyBean;
+import com.ride.librarybuilder.images.CropImage;
 import com.ride.librarybuilder.utils.LibraryConstants;
 import com.ride.librarybuilder.wordpress.WordpressUtils;
-import com.sun.corba.se.spi.orb.ParserDataFactory;
 
 public class CalibreXMLParser implements LibraryConstants {
 
 	private HashMap<String, WpTermTaxonomyBean> hmTermTaxonomyGenres = new HashMap<String, WpTermTaxonomyBean>();
 	private HashMap<String, WpTermTaxonomyBean> hmTermTaxonomyBookAuthors = new HashMap<String, WpTermTaxonomyBean>();
-
-	private Random rand = new Random();
+	private HashMap<String, Integer> hmSdmCategories = new HashMap<String, Integer>();
+	private HashMap<Integer, Integer> hmStarRating = new HashMap<Integer, Integer>();
 
 	private void getAuthorNodes(Document document) {
 
@@ -186,10 +184,33 @@ public class CalibreXMLParser implements LibraryConstants {
 		}
 	}
 
-	private void createSdmCategories(){
+	private void populateRatings() {
 		try {
-			//crear la categoria epub de taxonomia sdm_categories
-			//epub
+			EbookLibraryDAO dao = new EbookLibraryDAO();
+			int zeroStarId = dao.get_term_id(RATING_ZERO_STAR);
+			int oneStarId = dao.get_term_id(RATING_ONE_STAR);
+			int twoStarId = dao.get_term_id(RATING_TWO_STAR);
+			int threeStarId = dao.get_term_id(RATING_THREE_STAR);
+			int fourStarId = dao.get_term_id(RATING_FOUR_STAR);
+			int fiveStarId = dao.get_term_id(RATING_FIVE_STAR);
+
+			hmStarRating.put(RATING_ZERO_STAR_NAME, zeroStarId);
+			hmStarRating.put(RATING_ONE_STAR_NAME, oneStarId);
+			hmStarRating.put(RATING_TWO_STAR_NAME, twoStarId);
+			hmStarRating.put(RATING_THREE_STAR_NAME, threeStarId);
+			hmStarRating.put(RATING_FOUR_STAR_NAME, fourStarId);
+			hmStarRating.put(RATING_FIVE_STAR_NAME, fiveStarId);
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	private void createSdmCategories() {
+		try {
+			// crear la categoria epub de taxonomia sdm_categories
+			// epub
 			EbookLibraryDAO dao = new EbookLibraryDAO();
 			WpTermBean term = new WpTermBean();
 			term.setName(FILE_EPUB);
@@ -198,10 +219,10 @@ public class CalibreXMLParser implements LibraryConstants {
 			WpTermTaxonomyBean termTaxonomy = new WpTermTaxonomyBean();
 			termTaxonomy.setTermId(term.getTermId());
 			termTaxonomy.setTaxonomy(TAXONOMY_SDM_CATEGORIES);
-			termTaxonomy = dao
-					.insert_wp_term_taxonomy(termTaxonomy);
-			
-			//mobi
+			termTaxonomy = dao.insert_wp_term_taxonomy(termTaxonomy);
+			hmSdmCategories.put(FILE_EPUB, termTaxonomy.getTermId());
+
+			// mobi
 			term = new WpTermBean();
 			term.setName(FILE_MOBI);
 			term.setSlug(FILE_MOBI);
@@ -209,10 +230,10 @@ public class CalibreXMLParser implements LibraryConstants {
 			termTaxonomy = new WpTermTaxonomyBean();
 			termTaxonomy.setTermId(term.getTermId());
 			termTaxonomy.setTaxonomy(TAXONOMY_SDM_CATEGORIES);
-			termTaxonomy = dao
-					.insert_wp_term_taxonomy(termTaxonomy);
-			
-			//epub
+			termTaxonomy = dao.insert_wp_term_taxonomy(termTaxonomy);
+			hmSdmCategories.put(FILE_MOBI, termTaxonomy.getTermId());
+
+			// pdf
 			term = new WpTermBean();
 			term.setName(FILE_PDF);
 			term.setSlug(FILE_PDF);
@@ -220,15 +241,27 @@ public class CalibreXMLParser implements LibraryConstants {
 			termTaxonomy = new WpTermTaxonomyBean();
 			termTaxonomy.setTermId(term.getTermId());
 			termTaxonomy.setTaxonomy(TAXONOMY_SDM_CATEGORIES);
-			termTaxonomy = dao
-					.insert_wp_term_taxonomy(termTaxonomy);
-			
+			termTaxonomy = dao.insert_wp_term_taxonomy(termTaxonomy);
+			hmSdmCategories.put(FILE_PDF, termTaxonomy.getTermId());
+
+			// azw3
+			term = new WpTermBean();
+			term.setName(FILE_AZW3);
+			term.setSlug(FILE_AZW3);
+			term = dao.insert_wp_term(term);
+			termTaxonomy = new WpTermTaxonomyBean();
+			termTaxonomy.setTermId(term.getTermId());
+			termTaxonomy.setTaxonomy(TAXONOMY_SDM_CATEGORIES);
+			termTaxonomy = dao.insert_wp_term_taxonomy(termTaxonomy);
+			hmSdmCategories.put(FILE_AZW3, termTaxonomy.getTermId());
+
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 	}
+
 	private void getBooks(Document document) {
 		SortedMap<String, Book> hmBooks = new TreeMap<String, Book>();
 
@@ -368,81 +401,6 @@ public class CalibreXMLParser implements LibraryConstants {
 					postMeta.setMeta_value("");
 					dao.insert_wp_posts_meta(postMeta);
 
-					/*
-					// calculamos el nombre de los ficheros (=nombre
-					// post_formato)
-
-					// insertamos los links a los libros como metadatos
-					// buscamos el id del archivo
-					String epubKey = WordpressUtils.getSlug(title) + "_"
-							+ WordpressUtils.getSlug(author) + FILE_EPUB_SUFFIX;
-					int epubId = dao.get_post_attachment(epubKey);
-
-					String mobiKey = WordpressUtils.getSlug(title) + "_"
-							+ WordpressUtils.getSlug(author) + FILE_MOBI_SUFFIX;
-					int mobiId = dao.get_post_attachment(mobiKey);
-
-					String pdfKey = WordpressUtils.getSlug(title) + "_"
-							+ WordpressUtils.getSlug(author) + FILE_PDF_SUFFIX;
-					int pdfId = dao.get_post_attachment(pdfKey);
-
-					postMeta.setMeta_key(POST_META_KEY_EPUB);
-					// postMeta.setMeta_value(fileNameBase + ".epub");
-					postMeta.setMeta_value(String.valueOf(epubId));
-					dao.insert_wp_posts_meta(postMeta);
-					// Insertamos el adjunto como tipo sdm_downloads para
-					// gestionar las descargas
-					int sdmLinkEpub = createDownloadableContent(epubKey);
-
-					postMeta.setMeta_key(POST_META_KEY_MOBI);
-					// postMeta.setMeta_value(fileNameBase + ".mobi");
-					postMeta.setMeta_value(String.valueOf(mobiId));
-					dao.insert_wp_posts_meta(postMeta);
-					// Insertamos el adjunto como tipo sdm_downloads para
-					// gestionar las descargas
-					int sdmLinkMobi = createDownloadableContent(mobiKey);
-
-					postMeta.setMeta_key(POST_META_KEY_PDF);
-					// postMeta.setMeta_value(fileNameBase + ".pdf");
-					postMeta.setMeta_value(String.valueOf(pdfId));
-					dao.insert_wp_posts_meta(postMeta);
-					// Insertamos el adjunto como tipo sdm_downloads para
-					// gestionar las descargas
-					int sdmLinkPdf = createDownloadableContent(pdfKey);
-
-					// Le asignamos la categoria al contenido descargable
-					// (ATENCION:PREVIAMENTE CREAR CONTENIDOS CON LAS CATEGORIAS
-					// QUE TOQUE)
-					int sdm_category_epub = dao.get_sdm_category(
-							TAXONOMY_SDM_CATEGORIES, POST_META_KEY_EPUB);
-					WpTermRelationships postLinksRelationship = new WpTermRelationships();
-					postLinksRelationship.setObjectId(sdmLinkEpub);
-					postLinksRelationship.setTermTaxonomyId(sdm_category_epub);
-					postLinksRelationship.setTermOrder(0);
-					dao.insert_wp_term_relationships(postLinksRelationship);
-					dao.update_wp_term_taxonomy_count(sdm_category_epub);
-					
-					int sdm_category_mobi = dao.get_sdm_category(
-							TAXONOMY_SDM_CATEGORIES, POST_META_KEY_MOBI);
-					postLinksRelationship = new WpTermRelationships();
-					postLinksRelationship.setObjectId(sdmLinkMobi);
-					postLinksRelationship.setTermTaxonomyId(sdm_category_mobi);
-					postLinksRelationship.setTermOrder(0);
-					dao.insert_wp_term_relationships(postLinksRelationship);
-					dao.update_wp_term_taxonomy_count(sdm_category_mobi);
-					
-					int sdm_category_pdf = dao.get_sdm_category(
-							TAXONOMY_SDM_CATEGORIES, POST_META_KEY_PDF);
-					postLinksRelationship = new WpTermRelationships();
-					postLinksRelationship.setObjectId(sdmLinkPdf);
-					postLinksRelationship.setTermTaxonomyId(sdm_category_pdf);
-					postLinksRelationship.setTermOrder(0);
-					dao.insert_wp_term_relationships(postLinksRelationship);
-					dao.update_wp_term_taxonomy_count(sdm_category_pdf);
-					*/
-					
-					
-					
 					// insertamos el autor y los generos en
 					// wp_term_relationships, y updateamos contador en
 					// wp_term_taxonomy
@@ -467,13 +425,134 @@ public class CalibreXMLParser implements LibraryConstants {
 					// int imgId = dao.get_post_image(title);
 					String imgKey = title + "_"
 							+ WordpressUtils.getSlug(author);
-					int imgId = dao.get_post_attachment(imgKey);
+					int imgId = dao.get_post_attachment_id(imgKey,
+							POST_TYPE_ATTACHMENT);
 
 					// insertamos en wp_postmeta la relación post -> img
 					postMeta.setPostId(post.getId());
 					postMeta.setMeta_key(POST_META_THUMBNAIL);
 					postMeta.setMeta_value(String.valueOf(imgId));
 					dao.insert_wp_posts_meta(postMeta);
+
+					// calculamos el nombre de los ficheros (=nombre
+					// post_formato)
+
+					// insertamos los links a los libros como metadatos
+					// buscamos el id del archivo
+					String epubKey = WordpressUtils.getSlug(title) + "_"
+							+ WordpressUtils.getSlug(author)
+							+ FILE_DOWNLOADABLE_SUFFIX + FILE_EPUB_SUFFIX;
+					// int epubId = dao.get_post_attachment_id(epubKey,
+					// POST_TYPE_ATTACHMENT);
+
+					String mobiKey = WordpressUtils.getSlug(title) + "_"
+							+ WordpressUtils.getSlug(author)
+							+ FILE_DOWNLOADABLE_SUFFIX + FILE_MOBI_SUFFIX;
+					// int mobiId = dao.get_post_attachment_id(mobiKey,
+					// POST_TYPE_ATTACHMENT);
+
+					String pdfKey = WordpressUtils.getSlug(title) + "_"
+							+ WordpressUtils.getSlug(author)
+							+ FILE_DOWNLOADABLE_SUFFIX + FILE_PDF_SUFFIX;
+					// int pdfId = dao.get_post_attachment_id(pdfKey,
+					// POST_TYPE_ATTACHMENT);
+
+					String azw3Key = WordpressUtils.getSlug(title) + "_"
+							+ WordpressUtils.getSlug(author)
+							+ FILE_DOWNLOADABLE_SUFFIX + FILE_AZW3_SUFFIX;
+
+					// Insertamos el adjunto como tipo sdm_downloads para
+					// gestionar las descargas
+					int sdmLinkEpub = createDownloadableContent(epubKey);
+					// Lo guardamos en el custom field correspondiente
+					postMeta.setMeta_key(POST_META_KEY_EPUB);
+					// postMeta.setMeta_value(fileNameBase + ".epub");
+					postMeta.setMeta_value(String.valueOf(sdmLinkEpub));
+					dao.insert_wp_posts_meta(postMeta);
+
+					// Insertamos el adjunto como tipo sdm_downloads para
+					// gestionar las descargas
+					int sdmLinkMobi = createDownloadableContent(mobiKey);
+					// Lo guardamos en el custom field correspondiente
+					postMeta.setMeta_key(POST_META_KEY_MOBI);
+					// postMeta.setMeta_value(fileNameBase + ".mobi");
+					postMeta.setMeta_value(String.valueOf(sdmLinkMobi));
+					dao.insert_wp_posts_meta(postMeta);
+
+					// Insertamos el adjunto como tipo sdm_downloads para
+					// gestionar las descargas
+					int sdmLinkPdf = createDownloadableContent(pdfKey);
+					// Lo guardamos en el custom field correspondiente
+					postMeta.setMeta_key(POST_META_KEY_PDF);
+					// postMeta.setMeta_value(fileNameBase + ".pdf");
+					postMeta.setMeta_value(String.valueOf(sdmLinkPdf));
+					dao.insert_wp_posts_meta(postMeta);
+
+					int sdmLinkAzw3 = createDownloadableContent(azw3Key);
+					// Lo guardamos en el custom field correspondiente
+					postMeta.setMeta_key(POST_META_KEY_AZW3);
+					// postMeta.setMeta_value(fileNameBase + ".epub");
+					postMeta.setMeta_value(String.valueOf(sdmLinkAzw3));
+					dao.insert_wp_posts_meta(postMeta);
+
+					// Le asignamos la categoria al contenido descargable
+					// (ATENCION:PREVIAMENTE CREAR CONTENIDOS CON LAS CATEGORIAS
+					// QUE TOQUE)
+					/*
+					 * int sdm_category_epub = dao.get_sdm_category(
+					 * TAXONOMY_SDM_CATEGORIES, POST_META_KEY_EPUB);
+					 */
+					int sdm_category_epub = hmSdmCategories.get(FILE_EPUB);
+					WpTermRelationships postLinksRelationship = new WpTermRelationships();
+					postLinksRelationship.setObjectId(sdmLinkEpub);
+					postLinksRelationship.setTermTaxonomyId(sdm_category_epub);
+					postLinksRelationship.setTermOrder(0);
+					dao.insert_wp_term_relationships(postLinksRelationship);
+					dao.update_wp_term_taxonomy_count(sdm_category_epub);
+
+					/*
+					 * int sdm_category_mobi = dao.get_sdm_category(
+					 * TAXONOMY_SDM_CATEGORIES, POST_META_KEY_MOBI);
+					 */
+					int sdm_category_mobi = hmSdmCategories.get(FILE_MOBI);
+					postLinksRelationship = new WpTermRelationships();
+					postLinksRelationship.setObjectId(sdmLinkMobi);
+					postLinksRelationship.setTermTaxonomyId(sdm_category_mobi);
+					postLinksRelationship.setTermOrder(0);
+					dao.insert_wp_term_relationships(postLinksRelationship);
+					dao.update_wp_term_taxonomy_count(sdm_category_mobi);
+
+					/*
+					 * int sdm_category_pdf = dao.get_sdm_category(
+					 * TAXONOMY_SDM_CATEGORIES, POST_META_KEY_PDF);
+					 */
+					int sdm_category_pdf = hmSdmCategories.get(FILE_PDF);
+					postLinksRelationship = new WpTermRelationships();
+					postLinksRelationship.setObjectId(sdmLinkPdf);
+					postLinksRelationship.setTermTaxonomyId(sdm_category_pdf);
+					postLinksRelationship.setTermOrder(0);
+					dao.insert_wp_term_relationships(postLinksRelationship);
+					dao.update_wp_term_taxonomy_count(sdm_category_pdf);
+
+					int sdm_category_azw3 = hmSdmCategories.get(FILE_AZW3);
+					postLinksRelationship = new WpTermRelationships();
+					postLinksRelationship.setObjectId(sdmLinkAzw3);
+					postLinksRelationship.setTermTaxonomyId(sdm_category_azw3);
+					postLinksRelationship.setTermOrder(0);
+					dao.insert_wp_term_relationships(postLinksRelationship);
+					dao.update_wp_term_taxonomy_count(sdm_category_azw3);
+
+					// insertamos el rating
+					int stars = WordpressUtils
+							.getRandomNumberBetweenRange(3, 5);
+					int starId = hmStarRating.get(stars);
+
+					WpTermRelationships postStarsRelationship = new WpTermRelationships();
+					postStarsRelationship.setObjectId(post.getId());
+					postStarsRelationship.setTermTaxonomyId(starId);
+					postStarsRelationship.setTermOrder(0);
+					dao.insert_wp_term_relationships(postStarsRelationship);
+					dao.update_wp_term_taxonomy_count(starId);
 
 				}
 			}
@@ -570,7 +649,10 @@ public class CalibreXMLParser implements LibraryConstants {
 		getCategoryNodes(document);
 
 		createSdmCategories();
-		
+
+		// cargamos el hashmap con los ratings
+		populateRatings();
+
 		getBooks(document);
 
 	}
@@ -604,6 +686,10 @@ public class CalibreXMLParser implements LibraryConstants {
 	}
 
 	public void imageRenamer(File xml, String outputDir) {
+		imageRenamer(xml, outputDir, true);
+	}
+
+	public void imageRenamer(File xml, String outputDir, boolean crop) {
 
 		Document document = parseDocument(xml);
 
@@ -642,6 +728,11 @@ public class CalibreXMLParser implements LibraryConstants {
 
 				FileUtils.copyFile(orig, dest);
 
+				if (crop) {
+					CropImage.cropImage(dest,
+							"d:/Alberto/Dropbox/Web Libros/watermark.png");
+				}
+
 			}
 
 		} catch (XPathExpressionException e) {
@@ -658,6 +749,10 @@ public class CalibreXMLParser implements LibraryConstants {
 	}
 
 	public void bookFileRenamer(File xml, String outputDir) {
+		bookFileRenamer(xml, outputDir, false);
+	}
+	
+	public void bookFileRenamer(File xml, String outputDir, boolean deletePrevious) {
 
 		Document document = parseDocument(xml);
 
@@ -688,8 +783,9 @@ public class CalibreXMLParser implements LibraryConstants {
 				NodeList formats = (NodeList) expr2.evaluate(bookNode,
 						XPathConstants.NODESET);
 
-				// asumimos que solo hay un formato...
-				Node format = formats.item(0);
+				// asumimos que EPUB es el item(1)...
+				//Node format = formats.item(0);
+				Node format = formats.item(1);
 				String file = format.getFirstChild().getNodeValue();
 				System.out.println("file: " + file);
 
@@ -702,13 +798,14 @@ public class CalibreXMLParser implements LibraryConstants {
 				FileUtils.copyFile(orig, dest);
 
 				// zip
-				boolean ret = zipFile(dest, FILE_EPUB);
+				boolean ret = zipFile(dest, FILE_EPUB, deletePrevious);
 				if (ret) {
 					// borramos archivo original
 					dest.delete();
 				}
 
-				// buscamos en el directorio un archivo mobi y uno pdf, y los
+				// buscamos en el directorio un archivo mobi, azw3 y uno pdf, y
+				// los
 				// renombramos como el epub
 				File mobi = lookForOtherFormats(file, FILE_MOBI);
 				if (mobi != null) {
@@ -721,7 +818,7 @@ public class CalibreXMLParser implements LibraryConstants {
 
 					FileUtils.copyFile(mobi, destMobi);
 					// zip
-					ret = zipFile(destMobi, FILE_MOBI);
+					ret = zipFile(destMobi, FILE_MOBI, deletePrevious);
 					if (ret) {
 						// borramos archivo original
 						destMobi.delete();
@@ -739,13 +836,29 @@ public class CalibreXMLParser implements LibraryConstants {
 
 					FileUtils.copyFile(pdf, destPdf);
 					// zip
-					ret = zipFile(destPdf, FILE_PDF);
+					ret = zipFile(destPdf, FILE_PDF, deletePrevious);
 					if (ret) {
 						// borramos archivo original
 						destPdf.delete();
 					}
 				}
+				File azw3 = lookForOtherFormats(file, FILE_AZW3);
+				if (azw3 != null) {
+					System.out.println("azw3: " + azw3);
+					// copiamos con el nombre nuevo
+					String destFileNameAzw3 = outputDir
+							+ WordpressUtils.getSlug(title) + "_"
+							+ WordpressUtils.getSlug(author) + ".azw3";
+					File destAzw3 = new File(destFileNameAzw3);
 
+					FileUtils.copyFile(pdf, destAzw3);
+					// zip
+					ret = zipFile(destAzw3, FILE_AZW3, deletePrevious);
+					if (ret) {
+						// borramos archivo original
+						destAzw3.delete();
+					}
+				}
 			}
 
 		} catch (XPathExpressionException e) {
@@ -762,16 +875,27 @@ public class CalibreXMLParser implements LibraryConstants {
 	}
 
 	private boolean zipFile(File fileToCompress, String type) {
+		return zipFile(fileToCompress, type, false);
+	}
+	
+	private boolean zipFile(File fileToCompress, String type, boolean deletePrevious) {
 		String fileName = fileToCompress.getAbsolutePath().substring(0,
 				fileToCompress.getAbsolutePath().lastIndexOf("."));
 
 		try {
-			ZipFile zipFile = new ZipFile(fileName + "_" + type + ".zip");
+			File zip = new File(fileName + FILE_DOWNLOADABLE_SUFFIX + "_"
+					+ type + ".zip");
+			
+			if(zip.exists() && deletePrevious){
+				boolean del = zip.delete();
+				System.out.println("Fichero " + zip + " borrado: " + del);
+			}
+			ZipFile zipFile = new ZipFile(fileName + FILE_DOWNLOADABLE_SUFFIX
+					+ "_" + type + ".zip");
 			ZipParameters parameters = new ZipParameters();
 			parameters.setCompressionLevel(Zip4jConstants.DEFLATE_LEVEL_ULTRA);
 			zipFile.addFile(fileToCompress, parameters);
-
-			File zip = new File(fileName + "_" + type + ".zip");
+			
 			return zip.exists();
 
 		} catch (ZipException e) {
@@ -829,8 +953,10 @@ public class CalibreXMLParser implements LibraryConstants {
 		post.setPost_title(title);
 		post.setPost_excerpt("");
 		post.setPost_status(POST_STATUS_PUBLISHED);
-		post.setComment_status(POST_STATUS_OPEN);
-		post.setPing_status(POST_STATUS_OPEN);
+		// post.setComment_status(POST_STATUS_OPEN);
+		// post.setPing_status(POST_STATUS_OPEN);
+		post.setComment_status(POST_STATUS_CLOSED);
+		post.setPing_status(POST_STATUS_CLOSED);
 		post.setPost_password("");
 		post.setPost_name(title);
 		post.setTo_ping("");
@@ -858,10 +984,15 @@ public class CalibreXMLParser implements LibraryConstants {
 			dao.insert_wp_posts_meta(postMeta);
 
 			// sdm_upload
+			// OBTENEMOS LA URL DEL ARCHIVO DESCARGABLE (de tipo attachment!!!)
+			// String url = dao.get_post_attachment_url(title,
+			// POST_TYPE_SDM_DOWNLOADS);
+			String url = dao.get_post_attachment_url(title,
+					POST_TYPE_ATTACHMENT);
 			postMeta = new WpPostsMetaBean();
 			postMeta.setPostId(post.getId());
 			postMeta.setMeta_key(POST_META_KEY_SDM_UPLOAD);
-			postMeta.setMeta_value("");
+			postMeta.setMeta_value(url);
 			dao.insert_wp_posts_meta(postMeta);
 
 			// sdm_upload_thumbnail
@@ -875,7 +1006,8 @@ public class CalibreXMLParser implements LibraryConstants {
 			postMeta = new WpPostsMetaBean();
 			postMeta.setPostId(post.getId());
 			postMeta.setMeta_key(POST_META_KEY_SDM_COUNT_OFFSET);
-			postMeta.setMeta_value(String.valueOf(randInt(50, 300)));
+			postMeta.setMeta_value(String.valueOf(WordpressUtils
+					.getRandomNumberBetweenRange(50, 300)));
 			dao.insert_wp_posts_meta(postMeta);
 
 			return post.getId();
@@ -888,9 +1020,77 @@ public class CalibreXMLParser implements LibraryConstants {
 		return -1;
 	}
 
-	private int randInt(int min, int max) {
-		int randomNum = rand.nextInt((max - min) + 1) + min;
+	public void bookCoverCopyBySize(File xml, String coverDir,
+			String outputDir, long maxSize) {
+		Document document = parseDocument(xml);
 
-		return randomNum;
+		try {
+			XPath xPath = XPathFactory.newInstance().newXPath();
+			XPathExpression expr = xPath.compile("/calibredb/record");
+			NodeList books = (NodeList) expr.evaluate(document,
+					XPathConstants.NODESET);
+			System.out.println("books: " + books.getLength());
+
+			for (int i = 0; i < books.getLength(); i++) {
+				Node bookNode = books.item(i);
+
+				// obtenemos el titulo
+				XPathExpression expr2 = xPath.compile("title");
+				String title = (String) expr2.evaluate(bookNode,
+						XPathConstants.STRING);
+				System.out.println("title: " + title);
+
+				// Obtenemos el autor
+				expr2 = xPath.compile("authors/@sort");
+				String author = (String) expr2.evaluate(bookNode,
+						XPathConstants.STRING);
+				System.out.println("author: " + author);
+
+				// obtenemos archivo
+				expr2 = xPath.compile("formats/format");
+				NodeList formats = (NodeList) expr2.evaluate(bookNode,
+						XPathConstants.NODESET);
+
+				// asumimos que solo hay un formato...
+				// Node format = formats.item(0);
+				// epub viene en segunda posición
+				Node format = formats.item(1);
+				String file = format.getFirstChild().getNodeValue();
+				System.out.println("file: " + file);
+
+				// calculamos el nombre
+				String coverFileName = coverDir + WordpressUtils.getSlug(title)
+						+ "_" + WordpressUtils.getSlug(author) + ".jpg";
+
+				File cover = new File(coverFileName);
+				if (cover.length() < maxSize) {
+					System.out.println("El archivo " + cover.getAbsolutePath()
+							+ " ocupa menos de " + maxSize + " bytes");
+					// copiamos el libro al directorio destino
+					String outputPath = file.substring(file.indexOf("/"));
+
+					/*
+					 * String destFileName = outputDir + outputPath +
+					 * WordpressUtils.getSlug(title) + "_" +
+					 * WordpressUtils.getSlug(author) + ".epub";
+					 */
+					String destFileName = outputDir + outputPath;
+					File book = new File(file);
+					File destFile = new File(destFileName);
+					FileUtils.copyFile(book, destFile);
+				}
+
+			}
+
+		} catch (XPathExpressionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (DOMException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

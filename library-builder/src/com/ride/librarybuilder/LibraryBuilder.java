@@ -1,8 +1,9 @@
 package com.ride.librarybuilder;
 
 import java.io.File;
+import java.io.IOException;
 
-import com.ride.librarybuilder.database.EbookLibraryDAO;
+import com.ride.librarybuilder.images.CropImage;
 import com.ride.librarybuilder.parsers.CalibreXMLParser;
 
 public class LibraryBuilder {
@@ -23,7 +24,8 @@ public class LibraryBuilder {
 		String option = args[1];
 		if ("BUILDER".equals(option) == false
 				&& "IMGRENAMER".equals(option) == false
-				&& "BOOKRENAMER".equals(option) == false) {
+				&& "BOOKRENAMER".equals(option) == false
+				&& "TEST".equals(option) == false) {
 			System.out
 					.println("OPTION PARAMETER VALID VALUES ARE BUILDER OR IMGRENAMER OR BOOKRENAMER");
 			System.exit(8);
@@ -32,10 +34,20 @@ public class LibraryBuilder {
 
 		if ("BUILDER".equals(option)) {
 			parser.parseXML(xml);
-		}else if ("BOOKRENAMER".equals(option)) {
-			parser.bookFileRenamer(xml, "d:/Alberto/books/");
+		} else if ("BOOKRENAMER".equals(option)) {
+			//parser.bookFileRenamer(xml, "d:/Alberto/books/");
+			parser.bookFileRenamer(xml, "d:/Alberto/books/", true);
+			
+		} else if ("TEST".equals(option)) {
+
+			// CropImage.cropImage(new
+			// File("d:/Alberto/covers/test/at-the-villa-rose_mason-a-e-w.jpg"),"d:/Alberto/Dropbox/Web Libros/watermark.png");
+			parser.bookCoverCopyBySize(xml, "d:/Alberto/covers/", 
+					"c:/temp/test/", 22528);
+
 		} else {
-			parser.imageRenamer(xml, "d:/Alberto/covers/");
+			//parser.imageRenamer(xml, "d:/Alberto/covers/");
+			parser.imageRenamer(xml, "d:/Alberto/covers/",false);
 		}
 	}
 }
